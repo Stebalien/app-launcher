@@ -157,6 +157,7 @@ extension) to alists of:
 - name: the human-readable application name.
 - file: the full path to the desktop file.
 - exec: the command to execute (a list of strings).
+- path: the directory from which the command should be launched.
 - icon: an image descriptor containing the application's icon.
 - terminal: t if the application must be opened in a terminal emulator.
 - comment: a human readable comment describing the application.
@@ -172,7 +173,7 @@ extension) to alists of:
 	  (let ((start (re-search-forward "^\\[Desktop Entry\\] *$" nil t))
 		(end (re-search-forward "^\\[" nil t))
 		(visible t)
-                terminal name comment exec icon-name icon)
+                terminal name comment exec icon-name icon path)
 	    (catch 'break
 	      (unless start
 		(message "Warning: File %s has no [Desktop Entry] group" file)
@@ -195,6 +196,10 @@ extension) to alists of:
 	      (goto-char start)
 	      (when (re-search-forward "^Comment *= *\\(.+\\)$" end t)
 		(setq comment (match-string 1)))
+
+	      (goto-char start)
+	      (when (re-search-forward "^Path *= *\\(.+\\)$" end t)
+		(setq path (match-string 1)))
 
 	      (goto-char start)
 	      (when (re-search-forward "^Terminal *= *true *$" end t)
@@ -223,6 +228,7 @@ extension) to alists of:
                        `((name . ,name)
                          (file . ,file)
                          (exec . ,exec)
+                         (path . ,path)
                          (icon . ,icon)
                          (terminal . ,terminal)
                          (comment . ,comment)
@@ -253,7 +259,8 @@ The return-value is cached and should not be modified by the caller."
 
 (defun xdg-launcher-action-function-default (selected)
   "Default function used to run the SELECTED application."
-  (let ((cmd (alist-get 'exec selected)))
+  (let ((cmd (alist-get 'exec selected))
+        (default-directory (alist-get 'path selected default-directory)))
     (if (alist-get 'terminal selected)
         (pop-to-buffer
          (apply #'make-term (alist-get 'name selected)
