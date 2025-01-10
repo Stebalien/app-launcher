@@ -149,6 +149,11 @@ DESKTOP-FILE is the location of the desktop-file itself."
        (list arg)))
    (split-string-and-unquote exec-string)))
 
+(defun xdg-launcher--is-installed (tryexec)
+  "Check if TRYEXEC file is installed in the \"exec-path\"."
+  (or (not tryexec)
+      (locate-file tryexec exec-path nil #'file-executable-p)))
+
 (defun xdg-launcher-parse-files (files)
   "Parse the .desktop FILES and return a hash of parsed desktop files.
 The hash-table maps desktop file base-names (sans directory or
@@ -166,74 +171,28 @@ extension) to alists of:
   (let ((hash (make-hash-table :test #'equal))
         (iconpath (xdg-launcher--icon-path)))
     (dolist (entry files hash)
-      (let ((file (cdr entry)))
-	(with-temp-buffer
-	  (insert-file-contents file)
-	  (goto-char (point-min))
-	  (let ((start (re-search-forward "^\\[Desktop Entry\\] *$" nil t))
-		(end (re-search-forward "^\\[" nil t))
-		(visible t)
-                terminal name comment exec icon-name icon path)
-	    (catch 'break
-	      (unless start
-		(message "Warning: File %s has no [Desktop Entry] group" file)
-		(throw 'break nil))
-
-	      (goto-char start)
-	      (when (re-search-forward "^\\(Hidden\\|NoDisplay\\) *= *\\(1\\|true\\) *$" end t)
-		(setq visible nil))
-
-	      (goto-char start)
-	      (unless (re-search-forward "^Type *= *Application *$" end t)
-		(throw 'break nil))
-
-	      (goto-char start)
-	      (unless (re-search-forward "^Name *= *\\(.+\\)$" end t)
-		(message "Warning: File %s has no Name" file)
-		(throw 'break nil))
-	      (setq name (match-string 1))
-
-	      (goto-char start)
-	      (when (re-search-forward "^Comment *= *\\(.+\\)$" end t)
-		(setq comment (match-string 1)))
-
-	      (goto-char start)
-	      (when (re-search-forward "^Path *= *\\(.+\\)$" end t)
-		(setq path (match-string 1)))
-
-	      (goto-char start)
-	      (when (re-search-forward "^Terminal *= *true *$" end t)
-		(setq terminal t))
-
-              (goto-char start)
-              (when (re-search-forward "^Icon *= *\\(.+\\)$" end t)
-                (setq icon-name (match-string 1)))
-
-	      (goto-char start)
-	      (unless (re-search-forward "^Exec *= *\\(.+\\)$" end t)
-		;; Don't warn because this can technically be a valid desktop file.
-		(throw 'break nil))
-              (setq exec (xdg-launcher--parse-exec (match-string 1) name icon-name file))
-
-	      (goto-char start)
-	      (when (re-search-forward "^TryExec *= *\\(.+\\)$" end t)
-		(let ((try-exec (match-string 1)))
-		  (unless (locate-file try-exec exec-path nil #'file-executable-p)
-		    (throw 'break nil))))
-
-              (when (and iconpath icon-name)
-                (setq icon (xdg-launcher--get-icon iconpath icon-name)))
-
-              (puthash name
-                       `((name . ,name)
-                         (file . ,file)
-                         (exec . ,exec)
-                         (path . ,path)
-                         (icon . ,icon)
-                         (terminal . ,terminal)
-                         (comment . ,comment)
-                         (visible . ,visible))
-                       hash))))))))
+      (when-let* ((file (cdr entry))
+                  (parsed (xdg-desktop-read-file file))
+                  (name (gethash "Name" parsed))
+                  (exec (gethash "Exec" parsed))
+                  ((string= (gethash "Type" parsed) "Application"))
+                  ((xdg-launcher--is-installed (gethash "TryExec" parsed))))
+        (let ((path (gethash "Path" parsed))
+              (comment (gethash "Comment" parsed))
+              (icon (gethash "Icon" parsed))
+              (hidden (string= "true" (gethash "Hidden" parsed)))
+              (terminal (string= "true" (gethash "Terminal" parsed)))
+              (nodisplay (string= "true" (gethash "NoDisplay" parsed))))
+          (puthash name
+                   `((name . ,name)
+                     (file . ,file)
+                     (exec . ,(xdg-launcher--parse-exec exec name icon file))
+                     (path . ,path)
+                     (icon . ,(and iconpath icon (xdg-launcher--get-icon iconpath icon)))
+                     (terminal . ,terminal)
+                     (comment . ,comment)
+                     (visible . ,(not (or hidden nodisplay))))
+                   hash))))))
 
 ;;;###autoload
 (defun xdg-launcher-list-apps ()
