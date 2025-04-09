@@ -38,6 +38,16 @@
 (require 'xdg)
 (require 'cl-lib)
 
+(when (version< emacs-version "31.1")
+  (defun completion-table-with-metadata (table metadata)
+    "Return new completion TABLE with METADATA.
+METADATA should be an alist of completion metadata.  See
+`completion-metadata' for a list of supported metadata."
+    (lambda (string pred action)
+      (if (eq action 'metadata)
+          `(metadata . ,metadata)
+        (complete-with-action action table string pred)))))
+
 (defgroup app-launcher nil
   "Customizable options for the `app-launcher' package."
   :group 'tools
@@ -98,7 +108,9 @@
 
 (defun app-launcher--get-icon (path icon)
   "Find the requested ICON in the requested PATH."
-  (when-let* ((icon-file (locate-file icon path app-launcher-icon-extensions)))
+  (when-let* ((icon-file (if (and (file-name-absolute-p icon) (file-exists-p icon))
+                             icon
+                           (locate-file icon path app-launcher-icon-extensions))))
     (create-image icon-file nil nil :ascent 'center
                   :scale 1.0
                   :height '(1.0 . ch))))
@@ -119,72 +131,38 @@ This function always returns its elements in a stable order."
 		(puthash id file hash)))))))
     result))
 
+(defun app-launcher--is-installed (tryexec)
+  "Check if TRYEXEC file is installed in the \"exec-path\"."
+  (or (not tryexec)
+      (locate-file tryexec exec-path nil #'file-executable-p)))
+
 (defun app-launcher-parse-files (files)
   "Parse the .desktop FILES to return usable informations."
   (let ((hash (make-hash-table :test #'equal))
         (iconpath (app-launcher--icon-path)))
     (dolist (entry files hash)
-      (let ((file (cdr entry)))
-	(with-temp-buffer
-	  (insert-file-contents file)
-	  (goto-char (point-min))
-	  (let ((start (re-search-forward "^\\[Desktop Entry\\] *$" nil t))
-		(end (re-search-forward "^\\[" nil t))
-		(visible t)
-		name comment exec icon)
-	    (catch 'break
-	      (unless start
-		(message "Warning: File %s has no [Desktop Entry] group" file)
-		(throw 'break nil))
+      (when-let* ((file (cdr entry))
+                  (parsed (xdg-desktop-read-file file))
+                  (name (gethash "Name" parsed))
+                  (exec (gethash "Exec" parsed))
+                  ((string= (gethash "Type" parsed) "Application"))
+                  ((app-launcher--is-installed (gethash "TryExec" parsed))))
 
-	      (goto-char start)
-	      (when (re-search-forward "^\\(Hidden\\|NoDisplay\\) *= *\\(1\\|true\\) *$" end t)
-		(setq visible nil))
-	      (setq name (match-string 1))
+        (let ((path (gethash "Path" parsed))
+              (comment (gethash "Comment" parsed))
+              (icon (gethash "Icon" parsed))
+              (hidden (string= "true" (gethash "Hidden" parsed)))
+              (nodisplay (string= "true" (gethash "NoDisplay" parsed))))
 
-	      (goto-char start)
-	      (unless (re-search-forward "^Type *= *Application *$" end t)
-		(throw 'break nil))
-	      (setq name (match-string 1))
-
-	      (goto-char start)
-	      (unless (re-search-forward "^Name *= *\\(.+\\)$" end t)
-		(message "Warning: File %s has no Name" file)
-		(throw 'break nil))
-	      (setq name (match-string 1))
-
-	      (goto-char start)
-	      (when (re-search-forward "^Comment *= *\\(.+\\)$" end t)
-		(setq comment (match-string 1)))
-
-	      (goto-char start)
-	      (unless (re-search-forward "^Exec *= *\\(.+\\)$" end t)
-		;; Don't warn because this can technically be a valid desktop file.
-		(throw 'break nil))
-	      (setq exec (match-string 1))
-
-	      (goto-char start)
-	      (when (re-search-forward "^TryExec *= *\\(.+\\)$" end t)
-		(let ((try-exec (match-string 1)))
-		  (unless (locate-file try-exec exec-path nil #'file-executable-p)
-		    (throw 'break nil))))
-
-              (when iconpath
-                (goto-char start)
-                (setq icon (propertize
-                            " " 'display
-                            (or (and (re-search-forward "^Icon *= *\\(.+\\)$" end t)
-                                     (app-launcher--get-icon iconpath (match-string 1)))
-                                '(space :width height)))))
-
-              (puthash name
-                       `((name . ,name)
-                         (file . ,file)
-                         (exec . ,exec)
-                         (icon . ,icon)
-                         (comment . ,comment)
-                         (visible . ,visible))
-                       hash))))))))
+          (puthash name
+                   `((name . ,name)
+                     (file . ,file)
+                     (exec . ,exec)
+                     (path . ,path)
+                     (icon . ,(and iconpath icon (app-launcher--get-icon iconpath icon)))
+                     (comment . ,comment)
+                     (visible . ,(not (or hidden nodisplay))))
+                   hash))))))
 
 (defun app-launcher-list-apps ()
   "Return list of all Linux .desktop applications."
@@ -211,14 +189,19 @@ This function always returns its elements in a stable order."
 				  (equal chunk "%F")
 				  (equal chunk "%u")
 				  (equal chunk "%f"))
-			(setq result (concat result chunk " ")))))))
+			(setq result (concat result chunk " "))))))
+         (default-directory
+          (or (cdr (assq 'path (gethash selected app-launcher--cache)))
+              default-directory)))
     (call-process-shell-command command nil 0 nil)))
 
 (defun app-launcher--affixate (align candidate)
   "Return the annotated CANDIDATE with the description aligned to ALIGN."
   (let-alist candidate
     (list .name
-          (when .icon (concat .icon " "))
+          (concat
+           (propertize " " 'display (or .icon '(space :width height)))
+           " ")
           (if .comment
               (concat (propertize " " 'display `(space :align-to ,align))
                       " "
