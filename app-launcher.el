@@ -4,7 +4,7 @@
 ;; Created: 2020
 ;; License: GPL-3.0-or-later
 ;; Version: 0.1
-;; Package-Requires: ((emacs "27.1"))
+;; Package-Requires: ((emacs "28.1"))
 ;; Homepage: https://github.com/sebastienwae/app-launcher
 
 ;; This file is not part of GNU Emacs.
@@ -119,6 +119,30 @@ This function always returns its elements in a stable order."
 		(puthash id file hash)))))))
     result))
 
+(defun app-launcher--parse-exec (exec-string app-name icon-name desktop-file)
+  "Parse a .desktop Exec key string, returning a list of command arguments.
+EXEC-STRING is the Exec key from the desktop entry.
+APP-NAME is the translated application name.
+ICON-NAME is the icon name to use for %i expansion."
+  (when (and icon-name (string-empty-p icon-name))
+    (setq icon-name nil))
+  (mapcan
+   (lambda (arg)
+     (if (string-prefix-p "%" arg)
+         ;; Handle field code
+         (if (length< arg 2)
+             (error "Unescaped %%")
+           (pcase (aref arg 1)
+             ((or ?f ?u ?F ?U) nil)                      ; Skip file-related codes
+             (?i (and icon-name `("--icon" ,icon-name))) ; Icon
+             (?c (ensure-list app-name))                 ; Application name
+             (?k (ensure-list desktop-file))              ; Desktop file location (skip)
+             (?% "%")                                    ; Literal %
+             ((or ?d ?D ?n ?N ?v ?m) nil)                ; Skip deprecated codes
+             (_ (error "Invalid field code: %s" arg))))  ; Reject unrecognized field codes
+       (list arg)))
+   (split-string-and-unquote exec-string)))
+
 (defun app-launcher-parse-files (files)
   "Parse the .desktop FILES to return usable informations."
   (let ((hash (make-hash-table :test #'equal))
@@ -131,7 +155,7 @@ This function always returns its elements in a stable order."
 	  (let ((start (re-search-forward "^\\[Desktop Entry\\] *$" nil t))
 		(end (re-search-forward "^\\[" nil t))
 		(visible t)
-		name comment exec icon)
+                terminal name comment exec icon-name icon)
 	    (catch 'break
 	      (unless start
 		(message "Warning: File %s has no [Desktop Entry] group" file)
@@ -156,10 +180,18 @@ This function always returns its elements in a stable order."
 		(setq comment (match-string 1)))
 
 	      (goto-char start)
+	      (when (re-search-forward "^Terminal *= *true *$" end t)
+		(setq terminal t))
+
+              (goto-char start)
+              (when (re-search-forward "^Icon *= *\\(.+\\)$" end t)
+                (setq icon-name (match-string 1)))
+
+	      (goto-char start)
 	      (unless (re-search-forward "^Exec *= *\\(.+\\)$" end t)
 		;; Don't warn because this can technically be a valid desktop file.
 		(throw 'break nil))
-	      (setq exec (match-string 1))
+              (setq exec (app-launcher--parse-exec (match-string 1) name icon-name file))
 
 	      (goto-char start)
 	      (when (re-search-forward "^TryExec *= *\\(.+\\)$" end t)
@@ -168,11 +200,9 @@ This function always returns its elements in a stable order."
 		    (throw 'break nil))))
 
               (when iconpath
-                (goto-char start)
                 (setq icon (propertize
                             " " 'display
-                            (or (and (re-search-forward "^Icon *= *\\(.+\\)$" end t)
-                                     (app-launcher--get-icon iconpath (match-string 1)))
+                            (or (and icon-name (app-launcher--get-icon iconpath icon-name))
                                 '(space :width height)))))
 
               (puthash name
@@ -180,6 +210,7 @@ This function always returns its elements in a stable order."
                          (file . ,file)
                          (exec . ,exec)
                          (icon . ,icon)
+                         (terminal . ,terminal)
                          (comment . ,comment)
                          (visible . ,visible))
                        hash))))))))
@@ -202,15 +233,8 @@ This function always returns its elements in a stable order."
 
 (defun app-launcher-action-function-default (selected)
   "Default function used to run the SELECTED application."
-  (let* ((exec (alist-get 'exec selected))
-	 (command (let (result)
-		    (dolist (chunk (split-string exec " ") result)
-		      (unless (or (equal chunk "%U")
-				  (equal chunk "%F")
-				  (equal chunk "%u")
-				  (equal chunk "%f"))
-			(setq result (concat result chunk " ")))))))
-    (call-process-shell-command command nil 0 nil)))
+  (let ((cmd (alist-get 'exec selected)))
+    (apply #'call-process (car cmd) nil 0 nil (cdr cmd))))
 
 (defun app-launcher--affixate (align candidate)
   "Return the annotated CANDIDATE with the description aligned to ALIGN."
