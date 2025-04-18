@@ -234,7 +234,11 @@ ICON-NAME is the icon name to use for %i expansion."
 (defun app-launcher-action-function-default (selected)
   "Default function used to run the SELECTED application."
   (let ((cmd (alist-get 'exec selected)))
-    (apply #'call-process (car cmd) nil 0 nil (cdr cmd))))
+    (if (alist-get 'terminal selected)
+        (pop-to-buffer
+         (apply #'make-term (alist-get 'name selected)
+                (car cmd) nil (cdr cmd)))
+      (apply #'call-process (car cmd) nil 0 nil (cdr cmd)))))
 
 (defun app-launcher--affixate (align candidate)
   "Return the annotated CANDIDATE with the description aligned to ALIGN."
