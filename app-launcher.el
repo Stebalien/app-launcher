@@ -287,6 +287,20 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
           (setq icon (propertize icon 'display (cons image prop)))))
       (concat icon " "))))
 
+;;;###autoload
+(with-eval-after-load 'consult
+  (require 'map)
+  (defconst consult--source-app
+    `(:name     "Application"
+      :narrow   ?a
+      :category app-launcher
+      :require-match t
+      :action ,(lambda (cand) (funcall app-launcher-action-function cand))
+      :annotate ,(lambda (cand) (nth 2 (app-launcher--affixate 0 cand)))
+      :items ,(lambda () (map-filter (lambda (_k v) (alist-get 'visible v)) (app-launcher-list-apps)))
+      "Application source for `consult-buffer'."))
+  (cl-callf2 remq 'consult--source-app consult-buffer-sources)
+  (push 'consult--source-app (cdr (memq 'consult--source-buffer consult-buffer-sources))))
 
 ;; Provide the app-launcher feature
 (provide 'app-launcher)
