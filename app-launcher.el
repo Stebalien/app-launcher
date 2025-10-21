@@ -37,6 +37,11 @@
 
 (require 'xdg)
 (require 'cl-lib)
+(require 'map)
+
+(defvar consult-buffer-sources)
+(defvar nerd-icons-completion-icon-size)
+(declare-function nerd-icons-mdicon "ext:nerd-icons")
 
 (defgroup app-launcher nil
   "Customizable options for the `app-launcher' package."
@@ -289,7 +294,7 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
 
 ;;;###autoload
 (with-eval-after-load 'consult
-  (require 'map)
+  (require 'app-launcher)
   (defconst consult--source-app
     `(:name     "Application"
       :narrow   ?a
