@@ -217,6 +217,7 @@ ICON-NAME is the icon name to use for %i expansion."
                          (visible . ,visible))
                        hash))))))))
 
+;;;###autoload
 (defun app-launcher-list-apps ()
   "Return list of all Linux .desktop applications."
   (let* ((new-desktop-alist (app-launcher-list-desktop-files))
@@ -294,7 +295,6 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
 
 ;;;###autoload
 (with-eval-after-load 'consult
-  (require 'app-launcher)
   (defconst consult--source-app
     `(:name     "Application"
       :narrow   ?a
