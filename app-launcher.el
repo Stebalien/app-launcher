@@ -199,11 +199,8 @@ ICON-NAME is the icon name to use for %i expansion."
 		  (unless (locate-file try-exec exec-path nil #'file-executable-p)
 		    (throw 'break nil))))
 
-              (when iconpath
-                (setq icon (propertize
-                            " " 'display
-                            (or (and icon-name (app-launcher--get-icon iconpath icon-name))
-                                '(space :width height)))))
+              (when (and iconpath icon-name)
+                (setq icon (app-launcher--get-icon iconpath icon-name)))
 
               (puthash name
                        `((name . ,name)
@@ -243,8 +240,8 @@ ICON-NAME is the icon name to use for %i expansion."
 (defun app-launcher--affixate (align candidate)
   "Return the annotated CANDIDATE with the description aligned to ALIGN."
   (let-alist candidate
-    (list .name
-          (when .icon (concat .icon " "))
+    (list (propertize .name 'app-launcher--icon .icon)
+          ""
           (if .comment
               (concat (propertize " " 'display `(space :align-to ,align))
                       " "
@@ -274,6 +271,22 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
                   (lambda (_ y) (if arg t (cdr (assq 'visible y))))
                   t nil 'app-launcher nil nil)))
     (funcall app-launcher-action-function (gethash result candidates))))
+
+(with-eval-after-load 'nerd-icons-completion
+  (cl-defmethod nerd-icons-completion-get-icon (cand (_cat (eql app-launcher)))
+    "Return the icon for the candidate CAND of completion category app-launcher."
+    (let ((icon (nerd-icons-mdicon "nf-md-application_cog"
+                                   :face 'nerd-icons-dsilver
+                                   :height nerd-icons-completion-icon-size)))
+      (when-let* ((image (if (stringp cand)
+                             (get-text-property 0 'app-launcher--icon cand)
+                           (alist-get 'icon cand))))
+        ;; Merge the image with the existing display property.
+        (let ((prop (get-text-property 0 'display icon)))
+          (unless (listp (car prop)) (setq prop (list prop)))
+          (setq icon (propertize icon 'display (cons image prop)))))
+      (concat icon " "))))
+
 
 ;; Provide the app-launcher feature
 (provide 'app-launcher)
