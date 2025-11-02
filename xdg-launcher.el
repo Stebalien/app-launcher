@@ -5,7 +5,7 @@
 ;; License: GPL-3.0-or-later
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "28.1"))
-;; Homepage: https://github.com/Stebalien/xdg-launcher
+;; Homepage: https://github.com/Stebalien/xdg-launcher.el
 
 ;; This file is not part of GNU Emacs.
 
