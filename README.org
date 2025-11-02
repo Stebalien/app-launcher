@@ -1,20 +1,73 @@
-#+TITLE: app-launcher
+#+TITLE: xdg-launcher
 #+AUTHOR: Sebastien Waegeneire
+#+SUBAUTHOR: Steven Allen
 
-~app-launcher~ define the ~app-launcher-run-app~ command which uses Emacs 
-standard completion feature to select an application installed on your machine and launch it.
+XDG launcher implements a dmenu-style XDG application launcher in Emacs using standard Emacs minibuffer completion. It works best with a vertical completion framework like ~icomplete-vertical-mode~, ~fido-vertical-mode~, ~vertico~, etc.
+
+* Installation
+:PROPERTIES:
+:ID:       a68fc346-9640-450b-a597-9bf1eba8907a
+:END:
+
+** How to install with ~use-package~'s ~:vc~ keyword
+:PROPERTIES:
+:ID:       79fcfa42-4abe-4965-aa56-71c45607bb0b
+:END:
+
+#+BEGIN_SRC elisp
+(use-package xdg-launcher
+  :vc (:url "https://github.com/Stebalien/xdg-launcher.el"))
+#+END_SRC
 
 ** How to install with ~straight.el~
+:PROPERTIES:
+:ID:       9fccddd8-fbce-4dc3-a970-108809a6d456
+:END:
+
 #+BEGIN_SRC elisp
 (straight-use-package
-  '(app-launcher :type git :host github :repo "SebastienWae/app-launcher"))
-#+END_SRC
-Or if you are using ~use-package~ (thanks [[https://github.com/daviwil][@daviwil]])
-#+BEGIN_SRC elisp
-(use-package app-launcher
-  :straight '(app-launcher :host github :repo "SebastienWae/app-launcher"))
+  '(xdg-launcher :type git :host github :repo "Stebalien/xdg-launcher.el"))
 #+END_SRC
 
+Or if you are using ~use-package~ (thanks [[https://github.com/daviwil][@daviwil]])
+
+#+BEGIN_SRC elisp
+(use-package xdg-launcher
+  :straight '(xdg-launcher :host github :repo "Stebalien/xdg-launcher.el"))
+#+END_SRC
+
+* Usage
+:PROPERTIES:
+:ID:       8a9e8a4c-9473-4ea5-b2fb-b54cda0ef73f
+:END:
+
+Run =M-x xdg-launcher-run-app= and select your desired application.
+
+* Integrations
+:PROPERTIES:
+:ID:       32c448a4-db8d-4e51-a5e9-9d7e5f0f3a2d
+:END:
+
+This package integrates with nerd icons and consult.
+
+** Icons
+:PROPERTIES:
+:ID:       12d78fd8-c9be-467b-8ab4-c5a42a3cf5f0
+:END:
+
+This package integrates with [[https://github.com/rainstormstudio/nerd-icons-completion][nerd-icons-completion]] to provide application icons. Application icons are automatically loaded from the themes specified in ~xdg-launcher-icon-themes~, in order; include the "hicolor" theme in this list to use the default icon provided by the application.
+
+** Consult
+:PROPERTIES:
+:ID:       5f71314e-6160-4883-ac55-9dcafbb178a5
+:END:
+
+This package automatically integrates with ~consult-buffer~, adding XDG applications after the buffer list. This is the recommended way to interact with this package as it provides convenient "switch or launch" functionality, common in many desktop environments.
 
 * Credits
-This package uses code from the [[https://github.com/abo-abo/swiper][Counsel package]] by Oleh Krehel.
+:PROPERTIES:
+:ID:       42048e79-3c53-4776-bc37-0dfb94254d23
+:END:
+
+- This package is a fork of [[https://github.com/SebastienWae/app-launcher][app-launcher]] by [[https://github.com/SebastienWae][Sebastian]].
+- App-launcher used code from the [[https://github.com/abo-abo/swiper][Counsel package]] by Oleh Krehel.

@@ -1,11 +1,11 @@
-;;; app-launcher.el --- Launch applications -*- lexical-binding: t -*-
+;;; xdg-launcher.el --- Launch applications -*- lexical-binding: t -*-
 
-;; Author: Sebastien Waegeneire
+;; Author: Sebastien Waegeneire, Steven Allen
 ;; Created: 2020
 ;; License: GPL-3.0-or-later
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "28.1"))
-;; Homepage: https://github.com/Stebalien/app-launcher
+;; Homepage: https://github.com/Stebalien/xdg-launcher
 
 ;; This file is not part of GNU Emacs.
 
@@ -24,7 +24,7 @@
 
 ;;; Commentary:
 
-;; app-launcher define the `app-launcher-run-app' command which uses
+;; xdg-launcher define the `xdg-launcher-run-app' command which uses
 ;; Emacs standard completion feature to select an application installed
 ;; on your machine and launch it.
 
@@ -43,78 +43,78 @@
 (defvar nerd-icons-completion-icon-size)
 (declare-function nerd-icons-mdicon "ext:nerd-icons")
 
-(defgroup app-launcher nil
-  "Customizable options for the `app-launcher' package."
+(defgroup xdg-launcher nil
+  "Customizable options for the `xdg-launcher' package."
   :group 'tools
-  :prefix "app-launcher")
+  :prefix "xdg-launcher")
 
-(defcustom app-launcher-apps-directories
+(defcustom xdg-launcher-apps-directories
   (mapcar (lambda (dir) (expand-file-name "applications" dir))
 	  (cons (xdg-data-home)
 		(xdg-data-dirs)))
   "Directories in which to search for applications (.desktop files)."
   :type '(repeat directory))
 
-(defcustom app-launcher-action-function #'app-launcher-action-function-default
+(defcustom xdg-launcher-action-function #'xdg-launcher-action-function-default
   "Define the function that is used to run the selected application."
   :type 'function)
 
-(defcustom app-launcher-icon-themes '("Papirus" "Adwaita" "hicolor")
+(defcustom xdg-launcher-icon-themes '("Papirus" "Adwaita" "hicolor")
   "Icon themes to use for app icons in priority order."
   :type '(choice
           (const :tag "None" nil)
           (repeat :tag "Path" string)))
 
-(defvar app-launcher--cache nil
+(defvar xdg-launcher--cache nil
   "Cache of desktop files data.")
 
-(defvar app-launcher--cache-timestamp nil
+(defvar xdg-launcher--cache-timestamp nil
   "Time when we last updated the cached application list.")
 
-(defvar app-launcher--cached-files nil
+(defvar xdg-launcher--cached-files nil
   "List of cached desktop files.")
 
-(defconst app-launcher--icon-sizes '("scalable" "22x22" "24x24" "32x32" "36x36"
+(defconst xdg-launcher--icon-sizes '("scalable" "22x22" "24x24" "32x32" "36x36"
                                      "48x48" "64x64" "72x72" "96x96" "128x128"
                                      "192x192" "256x256" "512x512" "16x16")
   "A list of possible icon-size directory names, ordered by preference.")
 
-(defvar app-launcher-icons-directories
+(defvar xdg-launcher-icons-directories
   (mapcar (lambda (dir) (expand-file-name "icons" dir))
           (cons (xdg-data-home)
                 (xdg-data-dirs)))
   "Directories to search for icon themes.")
 
-(defvar app-launcher-icon-extensions '(".svg" ".png")
+(defvar xdg-launcher-icon-extensions '(".svg" ".png")
   "Icon extensions to use for application icons in priority order.")
 
-(defun app-launcher--icon-path ()
+(defun xdg-launcher--icon-path ()
   "Return a list of directories to search for icons, in priority order."
   (let (search-path)
-    (dolist (theme app-launcher-icon-themes)
-      (dolist (dir app-launcher-icons-directories)
+    (dolist (theme xdg-launcher-icon-themes)
+      (dolist (dir xdg-launcher-icons-directories)
         (when-let* ((themedir (expand-file-name theme dir))
                     (file-directory-p themedir))
-          (dolist (size app-launcher--icon-sizes)
+          (dolist (size xdg-launcher--icon-sizes)
             (when-let* ((path (expand-file-name (concat size "/apps/") themedir))
                         (file-directory-p path))
               (push path search-path))))))
     (nreverse search-path)))
 
-(defun app-launcher--get-icon (path icon)
+(defun xdg-launcher--get-icon (path icon)
   "Find the requested ICON in the requested PATH."
-  (when-let* ((icon-file (locate-file icon path app-launcher-icon-extensions)))
+  (when-let* ((icon-file (locate-file icon path xdg-launcher-icon-extensions)))
     (create-image icon-file nil nil :ascent 'center
                   :scale 1.0
                   :height '(1.0 . ch))))
 
-(defun app-launcher-list-desktop-files ()
+(defun xdg-launcher-list-desktop-files ()
   "Return an alist of all Linux applications.
 Each list entry is a pair of (desktop-name . desktop-file).
 This function always returns its elements in a stable order."
   (let ((hash (make-hash-table :test #'equal))
 	result)
-    (dolist (dir app-launcher-apps-directories)
+    (dolist (dir xdg-launcher-apps-directories)
       (when (file-exists-p dir)
 	(let ((dir (file-name-as-directory dir)))
 	  (dolist (file (directory-files-recursively dir ".*\\.desktop$" nil nil t))
@@ -124,7 +124,7 @@ This function always returns its elements in a stable order."
 		(puthash id file hash)))))))
     result))
 
-(defun app-launcher--parse-exec (exec-string app-name icon-name desktop-file)
+(defun xdg-launcher--parse-exec (exec-string app-name icon-name desktop-file)
   "Parse a .desktop Exec key string, returning a list of command arguments.
 EXEC-STRING is the Exec key from the desktop entry.
 APP-NAME is the translated application name.
@@ -149,7 +149,7 @@ DESKTOP-FILE is the location of the desktop-file itself."
        (list arg)))
    (split-string-and-unquote exec-string)))
 
-(defun app-launcher-parse-files (files)
+(defun xdg-launcher-parse-files (files)
   "Parse the .desktop FILES and return a hash of parsed desktop files.
 The hash-table maps desktop file base-names (sans directory or
 extension) to alists of:
@@ -163,7 +163,7 @@ extension) to alists of:
 - visible: t if the application should be displayed in an application
   launcher menu."
   (let ((hash (make-hash-table :test #'equal))
-        (iconpath (app-launcher--icon-path)))
+        (iconpath (xdg-launcher--icon-path)))
     (dolist (entry files hash)
       (let ((file (cdr entry)))
 	(with-temp-buffer
@@ -208,7 +208,7 @@ extension) to alists of:
 	      (unless (re-search-forward "^Exec *= *\\(.+\\)$" end t)
 		;; Don't warn because this can technically be a valid desktop file.
 		(throw 'break nil))
-              (setq exec (app-launcher--parse-exec (match-string 1) name icon-name file))
+              (setq exec (xdg-launcher--parse-exec (match-string 1) name icon-name file))
 
 	      (goto-char start)
 	      (when (re-search-forward "^TryExec *= *\\(.+\\)$" end t)
@@ -217,7 +217,7 @@ extension) to alists of:
 		    (throw 'break nil))))
 
               (when (and iconpath icon-name)
-                (setq icon (app-launcher--get-icon iconpath icon-name)))
+                (setq icon (xdg-launcher--get-icon iconpath icon-name)))
 
               (puthash name
                        `((name . ,name)
@@ -230,28 +230,28 @@ extension) to alists of:
                        hash))))))))
 
 ;;;###autoload
-(defun app-launcher-list-apps ()
+(defun xdg-launcher-list-apps ()
   "Return a hash-map of all Linux applications.
 
 The return value is the hash table returned from
-`app-launcher-parse-files', which see.
+`xdg-launcher-parse-files', which see.
 
 The return-value is cached and should not be modified by the caller."
-  (let* ((new-desktop-alist (app-launcher-list-desktop-files))
+  (let* ((new-desktop-alist (xdg-launcher-list-desktop-files))
 	 (new-files (mapcar 'cdr new-desktop-alist)))
-    (unless (and (equal new-files app-launcher--cached-files)
+    (unless (and (equal new-files xdg-launcher--cached-files)
 		 (null (cl-find-if
 			(lambda (file)
 			  (time-less-p
-			   app-launcher--cache-timestamp
+			   xdg-launcher--cache-timestamp
 			   (nth 5 (file-attributes file))))
 			new-files)))
-      (setq app-launcher--cache (app-launcher-parse-files new-desktop-alist))
-      (setq app-launcher--cache-timestamp (current-time))
-      (setq app-launcher--cached-files new-files)))
-  app-launcher--cache)
+      (setq xdg-launcher--cache (xdg-launcher-parse-files new-desktop-alist))
+      (setq xdg-launcher--cache-timestamp (current-time))
+      (setq xdg-launcher--cached-files new-files)))
+  xdg-launcher--cache)
 
-(defun app-launcher-action-function-default (selected)
+(defun xdg-launcher-action-function-default (selected)
   "Default function used to run the SELECTED application."
   (let ((cmd (alist-get 'exec selected)))
     (if (alist-get 'terminal selected)
@@ -260,10 +260,10 @@ The return-value is cached and should not be modified by the caller."
                 (car cmd) nil (cdr cmd)))
       (apply #'call-process (car cmd) nil 0 nil (cdr cmd)))))
 
-(defun app-launcher--affixate (align candidate)
+(defun xdg-launcher--affixate (align candidate)
   "Return the annotated CANDIDATE with the description aligned to ALIGN."
   (let-alist candidate
-    (list (propertize .name 'app-launcher--icon .icon)
+    (list (propertize .name 'xdg-launcher--icon .icon)
           ""
           (if .comment
               (concat (propertize " " 'display `(space :align-to ,align))
@@ -271,38 +271,38 @@ The return-value is cached and should not be modified by the caller."
                       (propertize .comment 'face 'completions-annotations))
             ""))))
 
-(defun app-launcher--make-affixation-fn (table)
-  "Return an affixation function for `app-launcher' completions TABLE."
+(defun xdg-launcher--make-affixation-fn (table)
+  "Return an affixation function for `xdg-launcher' completions TABLE."
   (let ((col 20))
     (lambda (completions)
       (setq col (max col (or (cl-loop for c in completions maximize (+ 10 (string-width c))) 0)))
-      (mapcar (lambda (c) (app-launcher--affixate col (gethash c table))) completions))))
+      (mapcar (lambda (c) (xdg-launcher--affixate col (gethash c table))) completions))))
 
 ;;;###autoload
-(defun app-launcher-run-app (&optional arg)
+(defun xdg-launcher-run-app (&optional arg)
   "Launch an application installed on your machine.
 When ARG is non-nil, ignore NoDisplay property in *.desktop files."
   (interactive)
-  (let* ((candidates (app-launcher-list-apps))
+  (let* ((candidates (xdg-launcher-list-apps))
          (table (completion-table-with-metadata
                  candidates
-                 `((affixation-function . ,(app-launcher--make-affixation-fn candidates))
-                   (category . app-launcher))))
+                 `((affixation-function . ,(xdg-launcher--make-affixation-fn candidates))
+                   (category . xdg-launcher))))
          (result (completing-read
                   "Run app: "
                   table
                   (lambda (_ y) (if arg t (cdr (assq 'visible y))))
-                  t nil 'app-launcher nil nil)))
-    (funcall app-launcher-action-function (gethash result candidates))))
+                  t nil 'xdg-launcher nil nil)))
+    (funcall xdg-launcher-action-function (gethash result candidates))))
 
 (with-eval-after-load 'nerd-icons-completion
-  (cl-defmethod nerd-icons-completion-get-icon (cand (_cat (eql app-launcher)))
-    "Return the icon for the candidate CAND of completion category app-launcher."
+  (cl-defmethod nerd-icons-completion-get-icon (cand (_cat (eql xdg-launcher)))
+    "Return the icon for the candidate CAND of completion category xdg-launcher."
     (let ((icon (nerd-icons-mdicon "nf-md-application_cog"
                                    :face 'nerd-icons-dsilver
                                    :height nerd-icons-completion-icon-size)))
       (when-let* ((image (if (stringp cand)
-                             (get-text-property 0 'app-launcher--icon cand)
+                             (get-text-property 0 'xdg-launcher--icon cand)
                            (alist-get 'icon cand))))
         ;; Merge the image with the existing display property.
         (let ((prop (get-text-property 0 'display icon)))
@@ -312,19 +312,19 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
 
 ;;;###autoload
 (with-eval-after-load 'consult
-  (defconst app-launcher--consult-source
+  (defconst xdg-launcher--consult-source
     `(:name     "Application"
       :narrow   ?a
-      :category app-launcher
+      :category xdg-launcher
       :require-match t
-      :action ,(lambda (cand) (funcall app-launcher-action-function cand))
-      :annotate ,(lambda (cand) (nth 2 (app-launcher--affixate 0 cand)))
-      :items ,(lambda () (map-filter (lambda (_k v) (alist-get 'visible v)) (app-launcher-list-apps)))
+      :action ,(lambda (cand) (funcall xdg-launcher-action-function cand))
+      :annotate ,(lambda (cand) (nth 2 (xdg-launcher--affixate 0 cand)))
+      :items ,(lambda () (map-filter (lambda (_k v) (alist-get 'visible v)) (xdg-launcher-list-apps)))
       "Application source for `consult-buffer'."))
-  (cl-callf2 remq 'app-launcher--consult-source consult-buffer-sources)
-  (push 'app-launcher--consult-source (cdr (memq 'consult--source-buffer consult-buffer-sources))))
+  (cl-callf2 remq 'xdg-launcher--consult-source consult-buffer-sources)
+  (push 'xdg-launcher--consult-source (cdr (memq 'consult--source-buffer consult-buffer-sources))))
 
-;; Provide the app-launcher feature
-(provide 'app-launcher)
+;; Provide the xdg-launcher feature
+(provide 'xdg-launcher)
 
-;;; app-launcher.el ends here
+;;; xdg-launcher.el ends here
