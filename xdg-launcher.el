@@ -252,10 +252,12 @@ The return-value is cached and should not be modified by the caller."
 When ARG is non-nil, ignore NoDisplay property in *.desktop files."
   (interactive "P")
   (let* ((candidates (xdg-launcher-list-apps))
-         (table (completion-table-with-metadata
-                 candidates
-                 `((affixation-function . ,(xdg-launcher--make-affixation-fn candidates))
-                   (category . xdg-launcher))))
+         (metadata `((affixation-function . ,(xdg-launcher--make-affixation-fn candidates))
+                     (category . xdg-launcher)))
+         (table (lambda (string pred action)
+                  (if (eq action 'metadata)
+                      `(metadata . ,metadata)
+                    (complete-with-action action candidates string pred))))
          (result (completing-read
                   "Run app: "
                   table
