@@ -5,7 +5,7 @@
 ;; License: GPL-3.0-or-later
 ;; Version: 0.1
 ;; Package-Requires: ((emacs "28.1"))
-;; Homepage: https://github.com/sebastienwae/app-launcher
+;; Homepage: https://github.com/Stebalien/app-launcher
 
 ;; This file is not part of GNU Emacs.
 
@@ -77,7 +77,7 @@
 (defconst app-launcher--icon-sizes '("scalable" "22x22" "24x24" "32x32" "36x36"
                                      "48x48" "64x64" "72x72" "96x96" "128x128"
                                      "192x192" "256x256" "512x512" "16x16")
-  "An list of possible icon-size directory names, ordered by preference.")
+  "A list of possible icon-size directory names, ordered by preference.")
 
 (defvar app-launcher-icons-directories
   (mapcar (lambda (dir) (expand-file-name "icons" dir))
@@ -128,7 +128,8 @@ This function always returns its elements in a stable order."
   "Parse a .desktop Exec key string, returning a list of command arguments.
 EXEC-STRING is the Exec key from the desktop entry.
 APP-NAME is the translated application name.
-ICON-NAME is the icon name to use for %i expansion."
+ICON-NAME is the icon name to use for %i expansion.
+DESKTOP-FILE is the location of the desktop-file itself."
   (when (and icon-name (string-empty-p icon-name))
     (setq icon-name nil))
   (mapcan
@@ -141,7 +142,7 @@ ICON-NAME is the icon name to use for %i expansion."
              ((or ?f ?u ?F ?U) nil)                      ; Skip file-related codes
              (?i (and icon-name `("--icon" ,icon-name))) ; Icon
              (?c (ensure-list app-name))                 ; Application name
-             (?k (ensure-list desktop-file))              ; Desktop file location (skip)
+             (?k (ensure-list desktop-file))             ; Desktop file location (skip)
              (?% "%")                                    ; Literal %
              ((or ?d ?D ?n ?N ?v ?m) nil)                ; Skip deprecated codes
              (_ (error "Invalid field code: %s" arg))))  ; Reject unrecognized field codes
@@ -149,7 +150,18 @@ ICON-NAME is the icon name to use for %i expansion."
    (split-string-and-unquote exec-string)))
 
 (defun app-launcher-parse-files (files)
-  "Parse the .desktop FILES to return usable informations."
+  "Parse the .desktop FILES and return a hash of parsed desktop files.
+The hash-table maps desktop file base-names (sans directory or
+extension) to alists of:
+
+- name: the human-readable application name.
+- file: the full path to the desktop file.
+- exec: the command to execute (a list of strings).
+- icon: an image descriptor containing the application's icon.
+- terminal: t if the application must be opened in a terminal emulator.
+- comment: a human readable comment describing the application.
+- visible: t if the application should be displayed in an application
+  launcher menu."
   (let ((hash (make-hash-table :test #'equal))
         (iconpath (app-launcher--icon-path)))
     (dolist (entry files hash)
@@ -219,7 +231,12 @@ ICON-NAME is the icon name to use for %i expansion."
 
 ;;;###autoload
 (defun app-launcher-list-apps ()
-  "Return list of all Linux .desktop applications."
+  "Return a hash-map of all Linux applications.
+
+The return value is the hash table returned from
+`app-launcher-parse-files', which see.
+
+The return-value is cached and should not be modified by the caller."
   (let* ((new-desktop-alist (app-launcher-list-desktop-files))
 	 (new-files (mapcar 'cdr new-desktop-alist)))
     (unless (and (equal new-files app-launcher--cached-files)
@@ -255,7 +272,7 @@ ICON-NAME is the icon name to use for %i expansion."
             ""))))
 
 (defun app-launcher--make-affixation-fn (table)
-  "Return an affixation function for `app-launcher' completions."
+  "Return an affixation function for `app-launcher' completions TABLE."
   (let ((col 20))
     (lambda (completions)
       (setq col (max col (or (cl-loop for c in completions maximize (+ 10 (string-width c))) 0)))
@@ -295,7 +312,7 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
 
 ;;;###autoload
 (with-eval-after-load 'consult
-  (defconst consult--source-app
+  (defconst app-launcher--consult-source
     `(:name     "Application"
       :narrow   ?a
       :category app-launcher
@@ -304,8 +321,8 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
       :annotate ,(lambda (cand) (nth 2 (app-launcher--affixate 0 cand)))
       :items ,(lambda () (map-filter (lambda (_k v) (alist-get 'visible v)) (app-launcher-list-apps)))
       "Application source for `consult-buffer'."))
-  (cl-callf2 remq 'consult--source-app consult-buffer-sources)
-  (push 'consult--source-app (cdr (memq 'consult--source-buffer consult-buffer-sources))))
+  (cl-callf2 remq 'app-launcher--consult-source consult-buffer-sources)
+  (push 'app-launcher--consult-source (cdr (memq 'consult--source-buffer consult-buffer-sources))))
 
 ;; Provide the app-launcher feature
 (provide 'app-launcher)
