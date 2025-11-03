@@ -50,8 +50,8 @@
 
 (defcustom xdg-launcher-apps-directories
   (mapcar (lambda (dir) (expand-file-name "applications" dir))
-	  (cons (xdg-data-home)
-		(xdg-data-dirs)))
+          (cons (xdg-data-home)
+                (xdg-data-dirs)))
   "Directories in which to search for applications (.desktop files)."
   :type '(repeat directory))
 
@@ -115,15 +115,15 @@
 Each list entry is a pair of (desktop-name . desktop-file).
 This function always returns its elements in a stable order."
   (let ((hash (make-hash-table :test #'equal))
-	result)
+        result)
     (dolist (dir xdg-launcher-apps-directories)
       (when (file-exists-p dir)
-	(let ((dir (file-name-as-directory dir)))
-	  (dolist (file (directory-files-recursively dir ".*\\.desktop$" nil nil t))
-	    (let ((id (subst-char-in-string ?/ ?- (file-relative-name file dir))))
-	      (when (and (not (gethash id hash)) (file-readable-p file))
-		(push (cons id file) result)
-		(puthash id file hash)))))))
+        (let ((dir (file-name-as-directory dir)))
+          (dolist (file (directory-files-recursively dir ".*\\.desktop$" nil nil t))
+            (let ((id (subst-char-in-string ?/ ?- (file-relative-name file dir))))
+              (when (and (not (gethash id hash)) (file-readable-p file))
+                (push (cons id file) result)
+                (puthash id file hash)))))))
     result))
 
 (defun xdg-launcher--parse-exec (exec-string app-name icon-name desktop-file)
@@ -204,15 +204,15 @@ The return value is the hash table returned from
 
 The return-value is cached and should not be modified by the caller."
   (let* ((new-desktop-alist (xdg-launcher-list-desktop-files))
-	 (new-files (mapcar #'cdr new-desktop-alist)))
+         (new-files (mapcar #'cdr new-desktop-alist)))
     (unless (and (equal new-files xdg-launcher--cached-files)
-		 (null (cl-find-if
-			(lambda (file)
-			  (time-less-p
-			   xdg-launcher--cache-timestamp
-			   (file-attribute-modification-time
+                 (null (cl-find-if
+                        (lambda (file)
+                          (time-less-p
+                           xdg-launcher--cache-timestamp
+                           (file-attribute-modification-time
                             (file-attributes file))))
-			new-files)))
+                        new-files)))
       (setq xdg-launcher--cache (xdg-launcher-parse-files new-desktop-alist)
             xdg-launcher--cache-timestamp (current-time)
             xdg-launcher--cached-files new-files)))
