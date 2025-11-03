@@ -283,7 +283,7 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
 
 ;;;###autoload
 (with-eval-after-load 'consult
-  (defconst xdg-launcher--consult-source
+  (defconst xdg-launcher-consult-source
     `(:name     "Application"
       :narrow   ?a
       :category xdg-launcher
@@ -292,8 +292,8 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
       :annotate ,(lambda (cand) (nth 2 (xdg-launcher--affixate 0 cand)))
       :items ,(lambda () (map-filter (lambda (_k v) (alist-get 'visible v)) (xdg-launcher-list-apps)))
       "Application source for `consult-buffer'."))
-  (cl-callf2 remq 'xdg-launcher--consult-source consult-buffer-sources)
-  (push 'xdg-launcher--consult-source (cdr (memq 'consult--source-buffer consult-buffer-sources))))
+  (cl-callf2 remq 'xdg-launcher-consult-source consult-buffer-sources)
+  (push 'xdg-launcher-consult-source (cdr (memq 'consult-source-buffer consult-buffer-sources))))
 
 ;; Provide the xdg-launcher feature
 (provide 'xdg-launcher)
