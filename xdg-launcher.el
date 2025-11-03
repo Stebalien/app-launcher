@@ -172,29 +172,28 @@ extension) to alists of:
   launcher menu."
   (let ((hash (make-hash-table :test #'equal))
         (iconpath (xdg-launcher--icon-path)))
-    (dolist (entry files hash)
-      (when-let* ((file (cdr entry))
-                  (parsed (xdg-desktop-read-file file))
-                  (name (gethash "Name" parsed))
-                  (exec (gethash "Exec" parsed))
-                  ((string= (gethash "Type" parsed) "Application"))
-                  ((xdg-launcher--is-installed (gethash "TryExec" parsed))))
-        (let ((path (gethash "Path" parsed))
-              (comment (gethash "Comment" parsed))
-              (icon (gethash "Icon" parsed))
-              (hidden (string= "true" (gethash "Hidden" parsed)))
-              (terminal (string= "true" (gethash "Terminal" parsed)))
-              (nodisplay (string= "true" (gethash "NoDisplay" parsed))))
-          (puthash name
-                   `((name . ,name)
-                     (file . ,file)
-                     (exec . ,(xdg-launcher--parse-exec exec name icon file))
-                     (path . ,path)
-                     (icon . ,(and iconpath icon (xdg-launcher--get-icon iconpath icon)))
-                     (terminal . ,terminal)
-                     (comment . ,comment)
-                     (visible . ,(not (or hidden nodisplay))))
-                   hash))))))
+    (cl-loop
+     for (_ . file) in files
+     do (map-let (("Name" name) ("Type" type) ("TryExec" try-exec)
+                  ("Exec" exec) ("Path" path) ("Comment" comment)
+                  ("Icon" icon) ("Terminal" terminal)
+                  ("Hidden" hidden) ("NoDisplay" no-display))
+            (xdg-desktop-read-file file)
+          (when (and exec name
+                     (string= type "Application")
+                     (xdg-launcher--is-installed try-exec))
+            (puthash
+             name
+             `((name . ,name) (comment . ,comment)
+               (path . ,path) (file . ,file)
+               (exec . ,(xdg-launcher--parse-exec exec name icon file))
+               (icon . ,(and iconpath icon
+                             (xdg-launcher--get-icon iconpath icon)))
+               (terminal . ,(string= terminal "true"))
+               (visible . ,(not (or (string= hidden "true")
+                                    (string= no-display "true")))))
+             hash)))
+     finally return hash)))
 
 ;;;###autoload
 (defun xdg-launcher-list-apps ()
@@ -205,28 +204,30 @@ The return value is the hash table returned from
 
 The return-value is cached and should not be modified by the caller."
   (let* ((new-desktop-alist (xdg-launcher-list-desktop-files))
-	 (new-files (mapcar 'cdr new-desktop-alist)))
+	 (new-files (mapcar #'cdr new-desktop-alist)))
     (unless (and (equal new-files xdg-launcher--cached-files)
 		 (null (cl-find-if
 			(lambda (file)
 			  (time-less-p
 			   xdg-launcher--cache-timestamp
-			   (nth 5 (file-attributes file))))
+			   (file-attribute-modification-time
+                            (file-attributes file))))
 			new-files)))
-      (setq xdg-launcher--cache (xdg-launcher-parse-files new-desktop-alist))
-      (setq xdg-launcher--cache-timestamp (current-time))
-      (setq xdg-launcher--cached-files new-files)))
+      (setq xdg-launcher--cache (xdg-launcher-parse-files new-desktop-alist)
+            xdg-launcher--cache-timestamp (current-time)
+            xdg-launcher--cached-files new-files)))
   xdg-launcher--cache)
 
 (defun xdg-launcher-action-function-default (selected)
   "Default function used to run the SELECTED application."
-  (let ((cmd (alist-get 'exec selected))
-        (default-directory (alist-get 'path selected default-directory)))
-    (if (alist-get 'terminal selected)
-        (pop-to-buffer
-         (apply #'make-term (alist-get 'name selected)
-                (car cmd) nil (cdr cmd)))
-      (apply #'call-process (car cmd) nil 0 nil (cdr cmd)))))
+  (let-alist selected
+    (let ((cmd (car .exec))
+          (args (cdr .exec))
+          (default-directory (or .path default-directory)))
+      (if .terminal
+          (pop-to-buffer
+           (apply #'make-term .name cmd nil args))
+        (apply #'call-process cmd nil 0 nil args)))))
 
 (defun xdg-launcher--affixate (align candidate)
   "Return the annotated CANDIDATE with the description aligned to ALIGN."
