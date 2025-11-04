@@ -266,6 +266,7 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
                   t nil 'xdg-launcher nil nil)))
     (funcall xdg-launcher-action-function (gethash result candidates))))
 
+;;;###autoload
 (with-eval-after-load 'nerd-icons-completion
   (cl-defmethod nerd-icons-completion-get-icon (cand (_cat (eql xdg-launcher)))
     "Return the icon for the candidate CAND of completion category xdg-launcher."
