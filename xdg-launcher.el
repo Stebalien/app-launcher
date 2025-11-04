@@ -59,6 +59,19 @@
   "Define the function that is used to run the selected application."
   :type 'function)
 
+(defcustom xdg-launcher-terminal-function #'make-term
+  "The function used to execute terminal applications.
+
+Must be a function that takes the same arguments as `make-term',
+which see."
+  :type `(radio
+          (function :tag "Term" make-term)
+          ,@(when (fboundp 'eat-make)
+              `((function :tag "EAT" eat-make)))
+          (function :tag "Custom")
+          (const :tag "Disable terminal support" nil)))
+
+
 (defcustom xdg-launcher-icon-themes '("hicolor")
   "Icon themes to use for app icons in priority order."
   :type '(choice
@@ -225,8 +238,11 @@ The return-value is cached and should not be modified by the caller."
           (args (cdr .exec))
           (default-directory (or .path default-directory)))
       (if .terminal
-          (pop-to-buffer
-           (apply #'make-term .name cmd nil args))
+          (progn
+            (unless xdg-launcher-terminal-function
+              (user-error "Cannot launch %s: terminal support is disabled" .name))
+            (pop-to-buffer
+             (apply xdg-launcher-terminal-function .name cmd nil args)))
         (apply #'call-process cmd nil 0 nil args)))))
 
 (defun xdg-launcher--affixate (align candidate)
@@ -262,7 +278,10 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
          (result (completing-read
                   "Run app: "
                   table
-                  (lambda (_ y) (if arg t (cdr (assq 'visible y))))
+                  (lambda (_ candidate)
+                    (let-alist candidate
+                      (and (or arg .visible)
+                           (or xdg-launcher-terminal-function (not .terminal)))))
                   t nil 'xdg-launcher nil nil)))
     (funcall xdg-launcher-action-function (gethash result candidates))))
 
