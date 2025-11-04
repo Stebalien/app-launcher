@@ -1,6 +1,6 @@
 #+TITLE: xdg-launcher
 #+AUTHOR: Sebastien Waegeneire
-#+SUBAUTHOR: Steven Allen
+#+SUBAUTHOR: EXWM Devs
 
 XDG launcher implements a dmenu-style XDG application launcher in Emacs using standard Emacs minibuffer completion. It works best with a vertical completion framework like ~icomplete-vertical-mode~, ~fido-vertical-mode~, ~vertico~, etc.
 
@@ -16,7 +16,7 @@ XDG launcher implements a dmenu-style XDG application launcher in Emacs using st
 
 #+BEGIN_SRC elisp
 (use-package xdg-launcher
-  :vc (:url "https://github.com/Stebalien/xdg-launcher.el"))
+  :vc (:url "https://github.com/emacs-exwm/xdg-launcher"))
 #+END_SRC
 
 ** How to install with ~straight.el~
@@ -26,14 +26,14 @@ XDG launcher implements a dmenu-style XDG application launcher in Emacs using st
 
 #+BEGIN_SRC elisp
 (straight-use-package
-  '(xdg-launcher :type git :host github :repo "Stebalien/xdg-launcher.el"))
+  '(xdg-launcher :type git :host github :repo "emacs-exwm/xdg-launcher"))
 #+END_SRC
 
 Or if you are using ~use-package~ (thanks [[https://github.com/daviwil][@daviwil]])
 
 #+BEGIN_SRC elisp
 (use-package xdg-launcher
-  :straight '(xdg-launcher :host github :repo "Stebalien/xdg-launcher.el"))
+  :straight '(xdg-launcher :host github :repo "emacs-exwm/xdg-launcher"))
 #+END_SRC
 
 * Usage
