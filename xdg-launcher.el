@@ -268,11 +268,14 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
 
 ;;;###autoload
 (with-eval-after-load 'nerd-icons-completion
+  (defconst xdg-launcher--nerd-icons-default-icon
+    (nerd-icons-mdicon "nf-md-application_cog"
+                       :face 'nerd-icons-dsilver
+                       :height nerd-icons-completion-icon-size)
+    "Default nerd-icons-completion icon for `xdg-launcher'.")
   (cl-defmethod nerd-icons-completion-get-icon (cand (_cat (eql xdg-launcher)))
-    "Return the icon for the candidate CAND of completion category xdg-launcher."
-    (let ((icon (nerd-icons-mdicon "nf-md-application_cog"
-                                   :face 'nerd-icons-dsilver
-                                   :height nerd-icons-completion-icon-size)))
+    "Return the icon for the candidate CAND of completion category `xdg-launcher'."
+    (let ((icon xdg-launcher--nerd-icons-default-icon))
       (when-let* ((image (if (stringp cand)
                              (get-text-property 0 'xdg-launcher--icon cand)
                            (alist-get 'icon cand))))
