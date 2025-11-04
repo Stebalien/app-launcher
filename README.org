@@ -43,6 +43,18 @@ Or if you are using ~use-package~ (thanks [[https://github.com/daviwil][@daviwil
 
 Run =M-x xdg-launcher-run-app= and select your desired application.
 
+* Configuration
+:PROPERTIES:
+:ID:       d3f4e3a5-8c28-43b7-a9f1-89d1b5bc073c
+:END:
+
+This package provides the following configuration options:
+
+- ~xdg-launcher-icon-themes~ -- If you use this package's nerd-icons support, you'll likely want to customize this list to include your icon theme(s) as this package doesn't auto-detect the current icon theme.
+- ~xdg-launcher-action-function~ -- Specify how to launch an application, once selected. Customize this if you, e.g., need to spawn applications in a special shell, via systemd, etc.
+- ~xdg-launcher-terminal-function~ -- Specify how to open applications in a terminal.
+- ~xdg-launcher-apps-directories~ -- A list of directories to scan for =*.desktop= files. You probably don't need to change this.
+
 * Integrations
 :PROPERTIES:
 :ID:       32c448a4-db8d-4e51-a5e9-9d7e5f0f3a2d
