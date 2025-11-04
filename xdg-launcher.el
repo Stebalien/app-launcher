@@ -237,13 +237,14 @@ The return-value is cached and should not be modified by the caller."
     (let ((cmd (car .exec))
           (args (cdr .exec))
           (default-directory (or .path default-directory)))
-      (if .terminal
-          (progn
-            (unless xdg-launcher-terminal-function
-              (user-error "Cannot launch %s: terminal support is disabled" .name))
-            (pop-to-buffer
-             (apply xdg-launcher-terminal-function .name cmd nil args)))
-        (apply #'call-process cmd nil 0 nil args)))))
+      (with-existing-directory
+        (if .terminal
+            (progn
+              (unless xdg-launcher-terminal-function
+                (user-error "Cannot launch %s: terminal support is disabled" .name))
+              (pop-to-buffer
+               (apply xdg-launcher-terminal-function .name cmd nil args)))
+          (apply #'call-process cmd nil 0 nil args))))))
 
 (defun xdg-launcher--affixate (align candidate)
   "Return the annotated CANDIDATE with the description aligned to ALIGN."
