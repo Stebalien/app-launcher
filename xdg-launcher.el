@@ -59,7 +59,7 @@
   "Define the function that is used to run the selected application."
   :type 'function)
 
-(defcustom xdg-launcher-icon-themes '("Papirus" "Adwaita" "hicolor")
+(defcustom xdg-launcher-icon-themes '("hicolor")
   "Icon themes to use for app icons in priority order."
   :type '(choice
           (const :tag "None" nil)
