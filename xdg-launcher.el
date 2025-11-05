@@ -39,7 +39,6 @@
 (require 'cl-lib)
 (require 'map)
 
-(defvar consult-buffer-sources)
 (defvar nerd-icons-completion-icon-size)
 (declare-function nerd-icons-mdicon "ext:nerd-icons")
 
