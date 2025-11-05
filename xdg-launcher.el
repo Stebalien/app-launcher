@@ -286,6 +286,16 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
                   t nil 'xdg-launcher nil nil)))
     (funcall xdg-launcher-action-function (gethash result candidates))))
 
+(defconst xdg-launcher-consult-source
+  `( :name          "Application"
+     :narrow        ?a
+     :category      xdg-launcher
+     :require-match t
+     :action        ,(lambda (cand) (funcall xdg-launcher-action-function cand))
+     :annotate      ,(lambda (cand) (nth 2 (xdg-launcher--affixate 0 cand)))
+     :items         ,(lambda () (map-filter (lambda (_k v) (alist-get 'visible v)) (xdg-launcher-list-apps))))
+  "Application source for `consult-buffer'.")
+
 ;;;###autoload
 (with-eval-after-load 'nerd-icons-completion
   (defconst xdg-launcher--nerd-icons-default-icon
@@ -304,20 +314,6 @@ When ARG is non-nil, ignore NoDisplay property in *.desktop files."
           (unless (listp (car prop)) (setq prop (list prop)))
           (setq icon (propertize icon 'display (cons image prop)))))
       (concat icon " "))))
-
-;;;###autoload
-(with-eval-after-load 'consult
-  (defconst xdg-launcher-consult-source
-    `(:name     "Application"
-      :narrow   ?a
-      :category xdg-launcher
-      :require-match t
-      :action ,(lambda (cand) (funcall xdg-launcher-action-function cand))
-      :annotate ,(lambda (cand) (nth 2 (xdg-launcher--affixate 0 cand)))
-      :items ,(lambda () (map-filter (lambda (_k v) (alist-get 'visible v)) (xdg-launcher-list-apps)))
-      "Application source for `consult-buffer'."))
-  (cl-callf2 remq 'xdg-launcher-consult-source consult-buffer-sources)
-  (push 'xdg-launcher-consult-source (cdr (memq 'consult-source-buffer consult-buffer-sources))))
 
 ;; Provide the xdg-launcher feature
 (provide 'xdg-launcher)

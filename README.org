@@ -74,7 +74,14 @@ This package integrates with [[https://github.com/rainstormstudio/nerd-icons-com
 :ID:       5f71314e-6160-4883-ac55-9dcafbb178a5
 :END:
 
-This package automatically integrates with ~consult-buffer~, adding XDG applications after the buffer list. This is the recommended way to interact with this package as it provides convenient "switch or launch" functionality, common in many desktop environments.
+You can add Linux desktop applications to ~consult-buffer~ by adding ~xdg-launcher-consult-source~ to ~consult-buffer-sources~. For example, add the following to your ~init.el~ add XDG application candidates immediately after buffer candidates in ~consult-buffer~.
+
+#+begin_src elisp
+(with-eval-after-load 'consult
+  (push 'xdg-launcher-consult-source (cdr (memq 'consult-source-buffer consult-buffer-sources))))
+#+end_src
+
+~xdg-launcher-consult-source~ is a general-purpose ~consult--multi~ source and can be used in, e.g., [[https://github.com/armindarvish/consult-omni][consult-omni]] as well.
 
 * Credits
 :PROPERTIES:
