@@ -265,8 +265,9 @@ The return-value is cached and should not be modified by the caller."
 
 ;;;###autoload
 (defun xdg-launcher-run-app (&optional arg)
-  "Launch an application installed on your machine.
-When ARG is non-nil, ignore NoDisplay property in *.desktop files."
+  "Launch a Linux desktop application.
+When ARG is non-nil, ignore the NoDisplay and Hidden properties in *.desktop
+files."
   (interactive "P")
   (let* ((candidates (xdg-launcher-list-apps))
          (metadata `((affixation-function . ,(xdg-launcher--make-affixation-fn candidates))
