@@ -277,7 +277,7 @@ files."
                       `(metadata . ,metadata)
                     (complete-with-action action candidates string pred))))
          (result (completing-read
-                  "Run app: "
+                  "Run application: "
                   table
                   (lambda (_ candidate)
                     (let-alist candidate
