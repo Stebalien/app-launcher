@@ -133,6 +133,9 @@ This function always returns its elements in a stable order."
         (let ((dir (file-name-as-directory dir)))
           (dolist (file (directory-files-recursively dir ".*\\.desktop$" nil t t))
             (let ((id (subst-char-in-string ?/ ?- (file-relative-name file dir))))
+              ;; We look at the timestamps of these files for caching purposes, so
+              ;; we need the actual files, not symlinks to them.
+              (setq file (file-chase-links file))
               (when (and (not (gethash id hash)) (file-readable-p file))
                 (push (cons id file) result)
                 (puthash id file hash)))))))
