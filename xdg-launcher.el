@@ -137,7 +137,12 @@ This function always returns its elements in a stable order."
               ;; we need the actual files, not symlinks to them.
               (setq file (file-chase-links file))
               (when (and (not (gethash id hash)) (file-readable-p file))
-                (push (cons id file) result)
+                ;; Ignore empty .desktop files. Symlinking .desktop files to
+                ;; /dev/null is a common way to mask them.
+                ;; TODO: Remove this check once xdg-desktop-read-fil
+                ;; no longer hangs when reading empty .desktop files.
+                (unless (= 0 (file-attribute-size (file-attributes file)))
+                  (push (cons id file) result))
                 (puthash id file hash)))))))
     result))
 
